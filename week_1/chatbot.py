@@ -5,13 +5,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class ChatAgent:
-    def __init__(self, modelname:str, maxturns: int):
+    def __init__(self, modelname:str):
         self.client=OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=os.environ["OPENROUTER_API_KEY"],
             )
         self.modelname=modelname
-        self.maxturns=maxturns
         self.history=[]
         pass
 
@@ -33,13 +32,11 @@ class ChatAgent:
                 messages=s
                 )
 
-
         r=response.choices[0].message.content
 
         self.history.append({"role": "assistant", "content": r})
         
         return r
-
 
 def main():
     print("----Welcome to the GenAI chatbot----")
@@ -54,7 +51,7 @@ def main():
     else: 
         selectedmodel="google/gemma-2-9b-it:free"
 
-    agent=ChatAgent(modelname=selectedmodel, maxturns=3)
+    agent=ChatAgent(modelname=selectedmodel)
     print(f"Chat session active using {selectedmodel}. Type 'exit' to quit session.")
 
     while True:
@@ -69,7 +66,6 @@ def main():
 
         reply=agent.chat(userinput)
         print(f"model: {reply}")
-
 
 if __name__=="__main__":
     main()
