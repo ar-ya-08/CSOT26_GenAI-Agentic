@@ -4,40 +4,65 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = OpenAI(
+client=OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ["OPENROUTER_API_KEY"],
 )
 
-def run_chatbot():
-    """
-    A terminal chatbot that holds a coherent multi-turn conversation.
 
-    Your implementation should:
-    - Start with a system message that sets the assistant's behaviour.
-    - Maintain a `messages` list with alternating user/assistant turns.
-    - Append the assistant's reply to `messages` after each call.
-    - Resend the full history on every API call.
-    - Allow the user to type 'exit' or 'quit' to end the session.
+def runchatbot():
 
-    Stretch:
-    - Add a '/reset' command that clears history so you can feel context loss live.
-    - Add a '/tokens' command that prints response.usage after the last call.
-    """
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."}
+    messages=[{ 
+        "role":"system", "content":"you are a helpful assistant"
+    }
     ]
 
-    print("Chat started. Type 'exit' to quit.\n")
+    lastuse=None
+
+    print("chat started.")
+    print("type 'exit' to quit.")
+    print("type '/reset' to clear history.")
+    print("type '/tokens' to view token usage.")
 
     while True:
-        # TODO: take user input
-        # TODO: append the user turn to messages
-        # TODO: call the API with the full messages list
-        # TODO: extract the assistant's reply
-        # TODO: append the assistant turn to messages
-        # TODO: print the reply
-        pass
+        userinput=input("user: ")
+        
+        if userinput.lower()=="exit":
+            print("Goodbye!")
+            break
+        
+        if userinput=='/reset':
+            messages=[{ "role":"system", "content":"you are a helpful assistant"}]
+            lastuse=None
+            print("system: the model has forgotten everything")
+            continue
 
-if __name__ == "__main__":
-    run_chatbot()
+        if userinput=='/tokens':
+            if lastuse is None:
+                print("no API calls have been made yet")
+            else:
+                print("-----TOKENS USAGE-----")
+                print(f"prompt tokens: {lastuse.prompt_tokens}")
+                print(f"completion tokens: {lastuse.completion_tokens}")
+                print(f"total tokens: {lastuse.total_tokens}")
+                print("----------------------")
+            continue
+
+
+        messages.append({"role":"user", "content":userinput})
+
+        response=client.chat.completions.create(
+        model="openrouter/free",
+        messages=messages
+     )
+        lastuse=response.usage
+        
+        reply= response.choices[0].message.content
+
+        messages.append({"role":"assistant", "content":reply})
+        
+        print(f"model: {reply}")
+
+
+if __name__=="__main__":
+    runchatbot()
