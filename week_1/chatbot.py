@@ -19,11 +19,20 @@ class ChatAgent:
         self.history.append({"role": "user", "content": userprompt})
 
         s=[{"role": "system", "content": "you are a helpful assistant"}] + self.history
+        try:
+            response = self.client.chat.completions.create(
+                model=self.modelname,
+                messages=s
+            )
+        except Exception as e:
+            print(f"selected model: {self.modelname} is unreachable. Rerouting to openrouter/free")
+            self.modelname = "openrouter/free"
+            
+            response = self.client.chat.completions.create(
+                model=self.modelname,
+                messages=s
+                )
 
-        response = self.client.chat.completions.create(
-            model=self.modelname,
-            messages=s
-        )
 
         r=response.choices[0].message.content
 
@@ -46,7 +55,7 @@ def main():
         selectedmodel="google/gemma-2-9b-it:free"
 
     agent=ChatAgent(modelname=selectedmodel, maxturns=3)
-    print(f"\nChat session active using {selectedmodel}. Type 'exit' to quit session.")
+    print(f"Chat session active using {selectedmodel}. Type 'exit' to quit session.")
 
     while True:
         userinput=input("user: ").strip()
@@ -55,9 +64,11 @@ def main():
             print("Goodbye!")
             break
 
+        if userinput==None:
+            continue
+
         reply=agent.chat(userinput)
         print(f"model: {reply}")
-
 
 
 if __name__=="__main__":
