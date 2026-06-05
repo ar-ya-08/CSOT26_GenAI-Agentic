@@ -5,14 +5,28 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class ChatAgent:
-    def __init__(self, modelname:str, systemprompt: str = "You are a helpful assistant."):
+    def __init__(self, modelname:str, systemprompt: str = "You are a helpful assistant.", maxtokens: int=75000):
         self.client=OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=os.environ["OPENROUTER_API_KEY"],
             )
         self.modelname=modelname
         self.systemprompt = systemprompt
+        self.maxtokens=maxtokens
         self.history=[]
+
+    def summarise(self):
+        self.history.append({"role": "user", "content": "summarise the conversation so far into a short concise paragraph to yourself."})
+        s = [{"role": "system", "content": self.systemprompt}] + self.history
+        response = self.client.chat.completions.create(
+            model=self.modelname,
+            messages=s
+        )
+        summary = response.choices[0].message.content
+        self.history = [
+            {"role": "assistant", "content": f"Summary of past conversation: {summary}"}
+        ]
+        print("Token limit exceeded, conversation has been summarised.")
 
     def chat(self, userprompt: str)->str:
         self.history.append({"role": "user", "content": userprompt})
@@ -35,7 +49,10 @@ class ChatAgent:
         r=response.choices[0].message.content
 
         self.history.append({"role": "assistant", "content": r})
-        
+
+        if response.usage.total_tokens >= self.maxtokens:
+            self.summarise()
+
         return r
         
     def reset(self):
