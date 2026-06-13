@@ -36,6 +36,8 @@ Before running, create a file called `sample.txt` with some text in it.
 import os
 import re
 import json
+import sys
+
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -46,14 +48,15 @@ client = OpenAI(
     api_key=os.environ["OPENROUTER_API_KEY"],
 )
 
-MODEL = "deepseek/deepseek-v4-flash:free"
+MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"
 
 SYSTEM_PROMPT = """You are a helpful file assistant with access to the following tools:
 
 - read_file(path: str): reads a file from disk and returns its content
 - write_file(path: str, content: str): writes content to a file on disk
 
-When you need to use a tool, emit EXACTLY this format and nothing else after it:
+When you need to use a tool, emit EXACTLY this format and nothing else after it.
+DO NOT USE XML. DO NOT USE <function> TAGS. YOU MUST USE PURE JSON INSIDE THE TOOL CALL:
 
 <tool_call>
 {"name": "TOOL_NAME", "arguments": {"arg1": "value1"}}
@@ -74,6 +77,12 @@ def read_file(path: str) -> dict:
     Return {"error": ...} if the file doesn't exist or can't be read.
     """
     # TODO: implement using open() in a try/except
+
+    try:
+        with open(path, "r") as f:
+            return {"content": f.read(), "path": path}
+    except Exception as e:
+        return {"error": str(e)}
     pass
 
 
@@ -86,6 +95,13 @@ def write_file(path: str, content: str) -> dict:
     Hint: open(path, 'w') and then f.write(content).
     """
     # TODO: implement
+
+    try:
+        with open(path, "w") as f:
+            bytes_written=f.write(content)
+            return {"success": True, "path": path, "bytes_written":bytes_written}
+    except Exception as e:
+        return {"error": str(e)}
     pass
 
 
@@ -108,6 +124,14 @@ def parse_tool_call(response_text: str) -> dict | None:
     Hint: use re.search() with re.DOTALL to find the block, then json.loads() the body.
     """
     # TODO: implement
+    m=re.search(r"<tool_call>(.*?)</tool_call>", response_text, re.DOTALL)
+
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(1).strip())
+    except Exception as e:
+        return None
     pass
 
 
@@ -117,6 +141,7 @@ def strip_tool_call(response_text: str) -> str:
     Useful for printing the model's prose without the raw tag.
     """
     # TODO: implement (re.sub is your friend)
+    return re.sub(r"<tool_call>.*?</tool_call>","", response_text, flags=re.DOTALL).strip()
     pass
 
 
@@ -140,6 +165,15 @@ def dispatch(name: str, arguments: dict) -> str:
     Always return a string (json.dumps the result dict).
     """
     # TODO: implement
+    if name not in TOOL_REGISTRY:
+        return json.dumps({"error": f"Unknown tool: {name}"})
+    
+    try:
+        tool=TOOL_REGISTRY[name]
+        res=tool(**arguments)
+        return json.dumps(res)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
     pass
 
 
@@ -171,6 +205,7 @@ def run_agent(user_message: str) -> str:
 
     Print a line to stderr each time a tool is called so you can follow the loop.
     """
+
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": user_message},
@@ -178,10 +213,33 @@ def run_agent(user_message: str) -> str:
 
     for iteration in range(MAX_ITERATIONS):
         # TODO: call the model, parse the response, dispatch or return
+        response= client.chat.completions.create(
+            model=MODEL,
+            messages=messages,
+        )
+
+        text=response.choices[0].message.content
+        if text is None:
+            return ""
+
+        messages.append({"role": "assistant", "content": text})
+
+        tool_call=parse_tool_call(text)
+
+        if tool_call:
+            name=tool_call.get("name")
+            args=tool_call.get("arguments", {})
+
+            toolresult=dispatch(name, args)
+
+            print(f"[iteration {iteration+1}], calling tool:{name}, with args:{args}", file=sys.stderr)  
+
+            messages.append({"role": "user", "content":f"<tool_response>\n{toolresult}\n</tool_response>"})
+        else:
+            return text
         pass
 
     return f"[Agent stopped after {MAX_ITERATIONS} iterations]"
-
 
 # ---------------------------------------------------------------------------
 # Entry point
