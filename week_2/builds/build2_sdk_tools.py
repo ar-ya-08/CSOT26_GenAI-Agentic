@@ -23,6 +23,7 @@ Stretch goals (not required):
 
 import os
 import json
+import sys
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -33,7 +34,7 @@ client = OpenAI(
     api_key=os.environ["OPENROUTER_API_KEY"],
 )
 
-MODEL = "deepseek/deepseek-v4-flash:free"
+MODEL = "openrouter/free"
 
 # ---------------------------------------------------------------------------
 # Tool schemas (the contract between you and the model)
@@ -102,6 +103,7 @@ def get_weather(city: str, unit: str = "celsius") -> dict:
         {"city": city, "temperature": 28, "unit": unit, "condition": "partly cloudy"}
     """
     # TODO: implement (hardcode some reasonable values)
+    return {"city": city, "temperature": 28, "unit": unit, "condition": "partly cloudy"}
     pass
 
 
@@ -112,6 +114,10 @@ def calculate(expression: str) -> dict:
     Return {"result": value} or {"error": message}.
     """
     # TODO: implement
+    try:
+        return {"result": eval(expression, {"__builtins__":{}}, {})}
+    except Exception as e:
+        return {"error": str(e)}
     pass
 
 
@@ -138,6 +144,24 @@ def dispatch(tool_call) -> str:
     Note: tool_call.function.arguments is a *string*, not a dict. Parse it first.
     """
     # TODO: implement
+    name=tool_call.function.name
+    argsstring=tool_call.function.arguments
+    
+    try:
+        args=json.loads(argsstring)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+    
+    if name not in TOOL_REGISTRY:
+        return json.dumps({"error": f"unknown tool: {name}"})
+    
+    try:
+        tool=TOOL_REGISTRY[name]
+        res=tool(**args)
+        return json.dumps(res)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
     pass
 
 
@@ -184,6 +208,25 @@ def run_agent(user_message: str) -> str:
 
         # TODO: handle finish_reason == "tool_calls"
         # TODO: handle finish_reason == "stop"
+
+        if finish_reason == "tool_calls":
+
+            messages.append(message)
+
+            for tool in message.tool_calls:
+                print(f"[iteration {_+1}] calling {tool.function.name} with arguments {tool.function.arguments}", file=sys.stderr)
+
+                r=dispatch(tool)
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool.id,
+                    "content": r
+                })
+
+        elif finish_reason== "stop":
+            return message.content
+
         pass
 
     return f"[Agent stopped after {MAX_ITERATIONS} iterations without a final answer]"
