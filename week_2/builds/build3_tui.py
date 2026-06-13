@@ -38,7 +38,7 @@ client = OpenAI(
     api_key=os.environ["OPENROUTER_API_KEY"],
 )
 
-MODEL = "deepseek/deepseek-v4-flash:free"
+MODEL = "openrouter/free"
 MAX_HISTORY_TURNS = 20   # keep last N user+assistant pairs
 
 # ---------------------------------------------------------------------------
@@ -51,6 +51,14 @@ def call_model(messages: list[dict]) -> str:
     This is a blocking call. It must run in a worker thread in the TUI.
     """
     # TODO: implement using client.chat.completions.create()
+    response=client.chat.completions.create(
+        model=MODEL,
+        messages=messages
+    )
+    r=response.choices[0].message.content
+    if r is None:
+        r=""
+    return r
     pass
 
 
@@ -63,6 +71,12 @@ def trim_history(messages: list[dict], max_turns: int) -> list[dict]:
     A 'pair' is one user message + one assistant message = 2 entries.
     """
     # TODO: implement
+    n=max_turns*2
+
+    if len(messages)-1>n:
+        return [messages[0]]+messages[-n:]
+    
+    return messages
     pass
 
 
@@ -135,6 +149,7 @@ class ChatApp(App):
 
         # Run the API call in a background thread so the UI stays responsive
         # TODO: call self.run_worker(self._get_response(), thread=True)
+        self.run_worker(self._get_response(), thread=True)
         pass
 
     async def _get_response(self) -> None:
@@ -151,6 +166,15 @@ class ChatApp(App):
         """
         log = self.query_one("#log", RichLog)
         # TODO: implement
+        try:
+            r=call_model(self.messages)
+
+            self.messages.append({"role": "assistant", "content": r})
+
+            self.call_from_thread(log.write, f"[green][Agent][/green] {r}\n")
+
+        except Exception as e:
+            self.call_from_thread(log.write, f"[red]Error[/red] {str(e)}\n")
         pass
 
     # -----------------------------------------------------------------------
@@ -160,13 +184,19 @@ class ChatApp(App):
     def action_clear_display(self) -> None:
         """Clear the visible log without touching conversation history."""
         # TODO: implement
+        log=self.query_one("#log", RichLog)
+        log.clear()
         pass
 
     def action_clear_history(self) -> None:
         """Reset conversation history and clear the display."""
         # TODO: reset self.messages to just the system message
+        self.messages=[self.messages[0]]
         # TODO: clear the display
+        log=self.query_one("#log", RichLog)
+        log.clear()
         # TODO: write a "History cleared." notice to the log
+        log.write("[yellow]History cleared.[/yellow]")
         pass
 
 
