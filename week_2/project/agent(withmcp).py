@@ -18,7 +18,6 @@ import requests
 import trafilatura
 import markdownify
 import json
-import asyncio
 import httpx
 from mcp import ClientSession
 from mcp.client.auth import OAuthClientProvider
