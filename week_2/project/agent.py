@@ -30,6 +30,14 @@ from textual.containers import Horizontal
 from openai import OpenAI
 from dotenv import load_dotenv
 
+def retry(func, retries=3, delay=2):
+    for i in range(retries):
+        try:
+            return func()
+        except Exception as e:
+            if i==retries-1:
+                raise
+
 load_dotenv()
 
 client = OpenAI(
@@ -47,16 +55,17 @@ REDIRECT_URI = "http://localhost:8765/callback"
 #webtools
 
 def web_search(query: str, num_results: int = 5) -> list[dict]:
-    """Search the web. Returns a list of {title, link, snippet} dicts."""
-    response = requests.post(
-        "https://google.serper.dev/search",
-        headers={"X-API-KEY": os.environ["SERPER_API_KEY"], "Content-Type": "application/json"},
-        json={"q": query, "num": num_results},
-        timeout=10,
-    )
-    response.raise_for_status()
-    data = response.json()
-
+    def searchquery():
+        response = requests.post(
+            "https://google.serper.dev/search",
+            headers={"X-API-KEY": os.environ["SERPER_API_KEY"], "Content-Type": "application/json"},
+            json={"q": query, "num": num_results},
+            timeout=10,
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    data=retry(searchquery)
     results = []
     for item in data.get("organic", []):
         results.append({
@@ -203,60 +212,88 @@ async def run_agent(history: list[dict], log_tool) -> str:
         callback_handler=wait_for_callback,
     )
     
-    async with httpx.AsyncClient(auth=auth, follow_redirects=True, timeout=60) as http:
-            async with streamable_http_client(ALPHAXIV_MCP_URL, http_client=http) as (read, write, _):
-                async with ClientSession(read, write) as session:
-                    await session.initialize()
-                    log_tool("[System] Successfully authenticated with AlphaXiv MCP Server.")
+    try:
+        async with httpx.AsyncClient(auth=auth, follow_redirects=True, timeout=60) as http:
+                async with streamable_http_client(ALPHAXIV_MCP_URL, http_client=http) as (read, write, _):
+                    async with ClientSession(read, write) as session:
+                        await session.initialize()
+                        log_tool("[System] Successfully authenticated with AlphaXiv MCP Server.")
 
-                    mcp_tools = await session.list_tools()
-                    
-                    alltools = list(TOOLS)
-                    for tool in mcp_tools.tools:
-                        alltools.append({
-                            "type": "function",
-                            "function": {
-                                "name": tool.name,
-                                "description": tool.description,
-                                "parameters": tool.inputSchema,
-                            },
-                        })
+                        mcp_tools = await session.list_tools()
+                        
+                        alltools = list(TOOLS)
+                        for tool in mcp_tools.tools:
+                            alltools.append({
+                                "type": "function",
+                                "function": {
+                                    "name": tool.name,
+                                    "description": tool.description,
+                                    "parameters": tool.inputSchema,
+                                },
+                            })
 
-                    for _ in range(MAX_ITERATIONS):
-                        response = client.chat.completions.create(
-                            model=MODEL,
-                            messages=history,
-                            tools=alltools,
-                        )
-                        message = response.choices[0].message
-                        finish_reason = response.choices[0].finish_reason
+                        for _ in range(MAX_ITERATIONS):
+                            response = client.chat.completions.create(
+                                model=MODEL,
+                                messages=history,
+                                tools=alltools,
+                            )
+                            message = response.choices[0].message
+                            finish_reason = response.choices[0].finish_reason
 
-                        if finish_reason == "tool_calls":
+                            if finish_reason == "tool_calls":
 
-                            history.append(message)
-                            
-                            for tool in message.tool_calls:
-                                log_tool(f"[Tool Call] Running {tool.function.name} with args: {tool.function.arguments}")
-                                if tool.function.name in TOOL_REGISTRY:
-                                    r=dispatch(tool)
-                                else:
-                                    try:
-                                        args = json.loads(tool.function.arguments)
-                                        mcp_result = await session.call_tool(tool.function.name, args)
-                                        r = mcp_result.content[0].text if mcp_result.content else ""
-                                    except Exception as e:
-                                        r = json.dumps({"error": str(e)})
+                                history.append(message)
+                                
+                                for tool in message.tool_calls:
+                                    log_tool(f"[Tool Call] Running {tool.function.name} with args: {tool.function.arguments}")
+                                    if tool.function.name in TOOL_REGISTRY:
+                                        r=dispatch(tool)
+                                    else:
+                                        try:
+                                            args = json.loads(tool.function.arguments)
+                                            mcp_result = await session.call_tool(tool.function.name, args)
+                                            r = mcp_result.content[0].text if mcp_result.content else ""
+                                        except Exception as e:
+                                            r = json.dumps({"error": str(e)})
 
-                                history.append({
-                                    "role": "tool",
-                                    "tool_call_id": tool.id,
-                                    "content": r
-                                })
+                                    history.append({
+                                        "role": "tool",
+                                        "tool_call_id": tool.id,
+                                        "content": r
+                                    })
 
-                        elif finish_reason== "stop":
-                            return message.content
+                            elif finish_reason== "stop":
+                                return message.content
 
-                    return f"[Agent stopped after {MAX_ITERATIONS} iterations without a final answer]"
+                        return f"[Agent stopped after {MAX_ITERATIONS} iterations without a final answer]"
+    except Exception as e:
+        log_tool(f"[yellow]AlphaXiv unavailable due to error: {str(e)}, using web tools only.[/yellow]")
+
+        for _ in range(MAX_ITERATIONS):
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=history,
+                tools=TOOLS,
+            )
+            message = response.choices[0].message
+            finish_reason = response.choices[0].finish_reason
+
+            if finish_reason == "tool_calls":
+                history.append(message)
+                for tool in message.tool_calls:
+                    log_tool(f"[Tool Call] Running {tool.function.name} with args: {tool.function.arguments}")
+                    r = dispatch(tool)
+                    history.append({
+                        "role": "tool",
+                        "tool_call_id": tool.id,
+                        "content": r
+                    })
+
+            elif finish_reason == "stop":
+                return message.content
+
+        return f"[Agent stopped after {MAX_ITERATIONS} iterations without a final answer]"
 
 def trim_history(messages: list[dict], max_turns: int) -> list[dict]:
     n=max_turns*2

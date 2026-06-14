@@ -2,7 +2,7 @@
 
 This week I first learnt how tool calling works, and through build 1 I learnt about the `re` module which works with regular expressions or RegEx. I used the `re.search` function to find the first occurrence of `<tool_call>` in the response to extract the tool and arguments being called. I also learnt about `re.DOTALL` which allows the `.` to also match newline characters.
 
-I also learnt about the `(.*?)` notation, which allows us to parse for tags and the `.` allows us to match every character, the `*` allows us and the `?` allows us to stop at the first closing of the tag and the `()` is used for capturing the text. I also learnt that the `re.search` function returns a match object and we can access the captured text using `.group()`. We used the `re.sub()` function to return either an empty string if a tool was called or return the response text if no tool was called. I also learnt about the `json` module and how `json.loads()` is used to convert a string to a dictionary and how `json.dumps()` is used to convert a dictionary to a string. I learnt about the `sys` module and how we can use `sys.stderr` to print error or iteration messages.
+I also learnt about the `(.*?)` notation, which allows us to parse for tags and the `.` allows us to match every character, the `*` allows us to match anything of any length, and the `?` allows us to stop at the first closing of the tag and the `()` is used for capturing the text. I also learnt that the `re.search` function returns a match object and we can access the captured text using `.group()`. We used the `re.sub()` function to return either an empty string if a tool was called or return the response text if no tool was called. I also learnt about the `json` module and how `json.loads()` is used to convert a string to a dictionary and how `json.dumps()` is used to convert a dictionary to a string. I learnt about the `sys` module and how we can use `sys.stderr` to print error or iteration messages.
 
 I also learnt about OpenAI SDK’s `tools=` parameter. I learnt how to append the message with the tools called to the model and how to use the different components of the response to find out which tools are being called.
 
@@ -12,7 +12,7 @@ I also learnt that the API call to OpenRouter in Build 3 is handled by a backgro
 
 Through the textual tutorial of the stopwatch I learnt about the built in `toggle_dark` feature and added it to my agent.
 
-The hardest and most challenging part was integrating the MCP servers. I learnt that unlike an API AlphaXiv's MCP server was locked behind a Google OAuth wall. I imported just the necessary components like `FileTokenStorage` and `wait_for_callback` from the `alphaxiv_search_cli.py` code. 
+The hardest and most challenging part was integrating the MCP servers. I learnt that unlike an API AlphaXiv's MCP server was locked behind a Google OAuth wall. I imported components like `FileTokenStorage` and `wait_for_callback` and `open_browser` from the `alphaxiv_search_cli.py` code. 
 
 I noticed that the `alphaxiv_search_cli.py` code’s `streamable_http_client` outputted a read and write stream, and I saw that the `ClientSession` from lesson 3 required those read and write pipes to initialize. I learnt how to pass the authenticated pipes from the OAuth client directly to the MCP.
 
@@ -29,6 +29,8 @@ The agent loop in `run_agent` keeps calling the model in a loop. If the model re
 ## A design decision I made
 
 I noticed that in the `agent(withmcp).py` code the function `fetch_as_markdown` was never called and so the `markdownify` module was never used. The main `smart_fetch` function only ever routed to `fetch_for_agent`, which relied entirely on `trafilatura`. Since we learnt that `trafilatura` is great for pulling clean text out of news articles but it can be overly aggressive and can remove structured data like tables or lists. I didn't want my bot to go blind just because a webpage was heavily formatted. So in the final `agent(final).py`, the `fetch_clean` function first extracts the text using `trafilatura`, but if the resulting text comes back empty or very short (less than 200 characters), it runs `markdownify` on the page to retain its structure.
+
+After submitting my project to the grader initially I was told I could improve by "Surfacing MCP connection failures into the loop" and "consider request retries" and to implement this I added a try and except block to the `run_agent` function so that OAuth/network errors can be recovered by the model by falling back to web tools. For the request retries I added a `retry` wrapper function to the start of my code, so that if when the webtools make serper requests, they recieve an error then the retry allows the request to be made 3 times before displaying an error.
 
 ## Something that surprised me
 
