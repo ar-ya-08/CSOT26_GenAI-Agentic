@@ -193,8 +193,6 @@ def dispatch(tool_call) -> str:
     except Exception as e:
         return json.dumps({"error": str(e)})
 
-    pass
-
 #agent loop (with mcp)
 
 async def run_agent(history: list[dict], log_tool) -> str:
@@ -294,9 +292,7 @@ async def run_agent(history: list[dict], log_tool) -> str:
 
                         elif finish_reason== "stop":
                             return message.content
-
-                        pass
-
+                        
                     return f"[Agent stopped after {MAX_ITERATIONS} iterations without a final answer]"
 
 def trim_history(messages: list[dict], max_turns: int) -> list[dict]:
@@ -314,7 +310,6 @@ def trim_history(messages: list[dict], max_turns: int) -> list[dict]:
         return [messages[0]]+messages[-n:]
     
     return messages
-    pass
 
 # TUI
 
@@ -400,7 +395,6 @@ class ResearchApp(App):
         # Run the API call in a background thread so the UI stays responsive
         # TODO: call self.run_worker(self._get_response(), thread=True)
         self.run_worker(self._get_response(), thread=True)
-        pass
 
     async def _get_response(self) -> None:
         """
@@ -430,8 +424,6 @@ class ResearchApp(App):
 
         except Exception as e:
             self.call_from_thread(chat.write, f"[red]Error[/red] {str(e)}\n")
-        pass
-
     # -----------------------------------------------------------------------
     # Actions (bound to keyboard shortcuts)
     # -----------------------------------------------------------------------
@@ -441,7 +433,6 @@ class ResearchApp(App):
         # TODO: implement
         self.query_one("#chat", RichLog).clear()
         self.query_one("#tools", RichLog).clear()
-        pass
 
     def action_clear_history(self) -> None:
         """Reset conversation history and clear the display."""
@@ -451,7 +442,6 @@ class ResearchApp(App):
         self.query_one("#chat", RichLog).clear()
         # TODO: write a "History cleared." notice to the log
         self.query_one("#chat", RichLog).write("[yellow]History cleared.[/yellow]")
-        pass
 
 
 if __name__ == "__main__":
