@@ -4,3 +4,5 @@ requests
 markdownify
 trafilatura
 textual
+mcp
+httpx

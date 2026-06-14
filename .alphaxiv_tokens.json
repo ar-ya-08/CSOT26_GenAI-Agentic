@@ -1,0 +1,36 @@
+{
+  "tokens": {
+    "access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Imluc18yeTlMdjJRQlYwOWlvZzlpYXpzZEcwdHduUGIiLCJ0eXAiOiJhdCtqd3QifQ.eyJjbGllbnRfaWQiOiJPTXVDZHJScGhNVDNHUHNoIiwiZXhwIjoxNzgxNTIyNTA0LCJpYXQiOjE3ODE0MzYxMDQsImlzcyI6Imh0dHBzOi8vY2xlcmsuYWxwaGF4aXYub3JnIiwianRpIjoib2F0X0Y5NUVQM0RNUzM4WkQzSlQiLCJuYmYiOjE3ODE0MzYwOTQsInNjb3BlIjoib2ZmbGluZV9hY2Nlc3MgZW1haWwgcHJvZmlsZSIsInN1YiI6InVzZXJfM0Y3Rk44bWM1aXVkV2NsUlJhYXE2b2RlQ3E3In0.YmMZOAw-x4MkSOIaBFVaVPxmkWuWyVsQQM4StMopNWEJlxM4CC_XWMU3b3mCgiSf1KY5ksigc-zuG4giyzQEjRBuRm9wshEMq59nkB4ykgFGY3zCz_i0Qn54cF7VIT6QTJRFCjfsJTEMDweutkLRi5K3yPY_6NF1kqu0gssDztMlSXUYNcOq_-giz-of5KGW_AoGhAVCwnGPyDY2nmV9TsPuCmr5BlJY5BgEUX9kc-clEPEcUXaoErOyTHoxAZwvAVoGKNhgSD9UaCB57Eb_3FtHSAdTeuPsqQkLffnJyjljESmtcjaSDPrjUaqs5-GMI8JuGn5EMfID1aGwjU0eog",
+    "token_type": "Bearer",
+    "expires_in": 86399,
+    "scope": "offline_access email profile",
+    "refresh_token": "YZM2MTA1NWQTMGU2YY01NJRMLWJKNZQTZWRIMTY1ZJNKMDE0"
+  },
+  "client_info": {
+    "redirect_uris": [
+      "http://localhost:8765/callback"
+    ],
+    "token_endpoint_auth_method": "client_secret_basic",
+    "grant_types": [
+      "authorization_code"
+    ],
+    "response_types": [
+      "code"
+    ],
+    "scope": "email offline_access profile",
+    "client_name": "AlphaXiv Search CLI",
+    "client_uri": null,
+    "logo_uri": null,
+    "contacts": null,
+    "tos_uri": null,
+    "policy_uri": null,
+    "jwks_uri": null,
+    "jwks": null,
+    "software_id": null,
+    "software_version": null,
+    "client_id": "OMuCdrRphMT3GPsh",
+    "client_secret": "w7VZyxCk9ac6XqRWtilFfyUnWyDlEdPr",
+    "client_id_issued_at": 1781436086235,
+    "client_secret_expires_at": 0
+  }
+}
