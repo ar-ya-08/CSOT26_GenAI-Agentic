@@ -118,6 +118,10 @@ search_tool = {
                 "query": {
                     "type": "string",
                     "description": "The search query. Be specific and targeted.",
+                },
+                "num_results": {
+                    "type": "integer",
+                    "description": "Number of results to return. Default is 5.",
                 }
             },
             "required": ["query"],
